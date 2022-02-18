@@ -2,6 +2,7 @@ package jsonrpc
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,6 +14,7 @@ func NewClient(addr string) Client {
 
 type Client interface {
 	Call(method string, requestData, responseData interface{}) error
+	CallContext(ctx context.Context, method string, requestData, responseData interface{}) error
 }
 
 type client struct {
@@ -20,6 +22,10 @@ type client struct {
 }
 
 func (c *client) Call(method string, requestData, responseData interface{}) error {
+	return c.CallContext(context.Background(), method, requestData, responseData)
+}
+
+func (c *client) CallContext(ctx context.Context, method string, requestData, responseData interface{}) error {
 	var (
 		req = &requestBody{
 			Method: method,
@@ -34,13 +40,17 @@ func (c *client) Call(method string, requestData, responseData interface{}) erro
 	if err = json.NewEncoder(buf).Encode(req); err != nil {
 		return err
 	}
-	resp, err := http.Post(c.addr, contentType, buf)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.addr, buf)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = resp.Body.Close() }()
+	httpRes, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = httpRes.Body.Close() }()
 	res := new(responseBody)
-	if err = json.NewDecoder(resp.Body).Decode(res); err != nil {
+	if err = json.NewDecoder(httpRes.Body).Decode(res); err != nil {
 		return err
 	}
 	if res.Status != int(StatusOK) {

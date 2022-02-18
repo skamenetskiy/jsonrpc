@@ -32,7 +32,7 @@ type server struct {
 	name     string
 	handlers map[string]Handler
 	mu       sync.Mutex
-	http *http.Server
+	http     *http.Server
 }
 
 func (srv *server) Handle(method string, handler Handler) {
@@ -49,7 +49,7 @@ func (srv *server) Listen(addr string) error {
 		Addr:    addr,
 		Handler: http.HandlerFunc(srv.handle),
 	}
-	shutdown := make(chan os.Signal)
+	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-shutdown

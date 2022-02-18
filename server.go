@@ -54,7 +54,7 @@ func (srv *server) Listen(addr string) error {
 	go func() {
 		sig := <-shutdown
 		log.Printf("received %s, shutting down\n", sig.String())
-
+		srv.Shutdown()
 	}()
 	return srv.http.ListenAndServe()
 }
